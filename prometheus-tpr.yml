@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-micro
+  namespace: micro
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: prometheus-micro
+  namespace: micro
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: prometheus-micro
+  namespace: micro
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-micro
+subjects:
+- kind: ServiceAccount
+  name: prometheus-micro
+  namespace: micro
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: Prometheus
+metadata:
+  name: micro
+  namespace: micro
+spec:
+  version: v1.6.2
+  serviceAccountName: prometheus-micro
+  serviceMonitorSelector:
+    matchLabels:
+      team: micro
+  resources:
+    requests:
+      memory: 400Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-micro
+  namespace: micro
+spec:
+  type: NodePort
+  ports:
+  - name: web
+    nodePort: 30901
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    prometheus: micro
